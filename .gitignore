@@ -1,0 +1,258 @@
+# MLB Standings Glyph - Android Project .gitignore
+# For Nothing Phone Glyph Matrix application
+
+# ================================
+# Android / Gradle Build System
+# ================================
+
+# Gradle files
+.gradle/
+build/
+*/build/
+app/build/
+gradle-build/
+
+# Local configuration file (sdk path, etc)
+local.properties
+
+# Generated files
+bin/
+gen/
+out/
+release/
+
+# Gradle Wrapper distribution (downloaded automatically)
+gradle-8.4/
+gradle-8.4-bin.zip
+
+# Keep the gradle wrapper properties and jar for reproducible builds
+!gradle/wrapper/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.properties
+
+# ================================
+# Android Studio / IntelliJ IDEA
+# ================================
+
+# User-specific configurations
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/gradle.xml
+.idea/assetWizardSettings.xml
+.idea/dictionaries/
+.idea/libraries/
+.idea/caches/
+.idea/modules.xml
+.idea/navEditor.xml
+.idea/httpRequests/
+.idea/shelf/
+.idea/compiler.xml
+.idea/misc.xml
+.idea/runConfigurations.xml
+.idea/inspectionProfiles/
+
+# Captures folder
+captures/
+
+# IntelliJ
+*.iml
+*.ipr
+*.iws
+/out/
+
+# ================================
+# Android APK/AAB Files
+# ================================
+
+# Debug and release APKs
+*.apk
+*.ap_
+*.aab
+
+# ================================
+# Android Runtime Files
+# ================================
+
+# Files for the ART/Dalvik VM
+*.dex
+
+# Java class files
+*.class
+
+# ================================
+# NDK / Native Development
+# ================================
+
+# CMake
+cmake-build-*/
+
+# NDK
+obj/
+.externalNativeBuild/
+.cxx/
+app/.cxx/
+
+# ================================
+# Signing & Security
+# ================================
+
+# Keystore files (never commit these!)
+*.jks
+*.keystore
+.signing/
+
+# API keys and secrets
+secrets.properties
+api_keys.properties
+google-services.json
+
+# ================================
+# Logs & Debugging
+# ================================
+
+# Log Files
+*.log
+
+# Android Profiling
+*.hprof
+
+# Test output and debugging
+test_output/
+debug_logs/
+
+# ================================
+# Kotlin Specific
+# ================================
+
+# Kotlin compiled classes
+kotlin-classes/
+
+# ================================
+# Code Quality & Analysis
+# ================================
+
+# Lint
+lint-results/
+lint-results.xml
+lint-report.html
+lint/intermediates/
+lint/generated/
+lint/outputs/
+lint/tmp/
+
+# Proguard
+proguard/
+
+# ================================
+# Dependency Management
+# ================================
+
+# Keep the GlyphMatrixSDK - it's required for the project
+!app/libs/GlyphMatrixSDK.aar
+
+# ================================
+# CI/CD & Deployment
+# ================================
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots
+fastlane/test_output
+fastlane/readme.md
+
+# Crashlytics
+com_crashlytics_export_strings.xml
+crashlytics.properties
+crashlytics-build.properties
+fabric.properties
+
+# ================================
+# Development Tools & Scripts
+# ================================
+
+# Glyph Matrix simulator scripts (for development only)
+glyph_simulator.py
+enhanced_glyph_simulator.py
+simulator_test.py
+*.py.bak
+
+# Freeline
+freeline.py
+freeline/
+freeline_project_description.json
+
+# ================================
+# Operating System Files
+# ================================
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+
+# ================================
+# Version Control
+# ================================
+
+# Git merge files
+*.orig
+*.rej
+
+# SVN
+.svn/
+
+# ================================
+# Temporary & Backup Files
+# ================================
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# Backup files
+*.bak
+*.backup
+
+# Cache directories
+.cache/
+
+# ================================
+# JetBrains Templates
+# ================================
+
+**___jb_tmp___
+**___jb_old___
+
+# ================================
+# User Environment
+# ================================
+
+# Android user environment
+.android/
+
+# ================================
+# Project Specific Exclusions
+# ================================
+
+# Nothing Phone specific test files
+nothing_test_data/
+glyph_test_outputs/
+
+# MLB API test responses (if cached for development)
+mlb_api_cache/
+test_api_responses/

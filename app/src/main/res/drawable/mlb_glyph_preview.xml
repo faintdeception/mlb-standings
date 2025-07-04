@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="100dp"
+    android:height="100dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+    
+    <!-- Background circle -->
+    <path
+        android:fillColor="@color/primary"
+        android:pathData="M50,50m-45,0a45,45 0,1 1,90 0a45,45 0,1 1,-90 0"/>
+    
+    <!-- Baseball icon -->
+    <path
+        android:fillColor="@color/white"
+        android:pathData="M50,20C33.43,20 20,33.43 20,50s13.43,30 30,30s30,-13.43 30,-30S66.57,20 50,20z"/>
+    
+    <!-- Baseball stitching -->
+    <path
+        android:strokeColor="@color/primary"
+        android:strokeWidth="2"
+        android:pathData="M30,35Q50,45 70,35"/>
+    
+    <path
+        android:strokeColor="@color/primary"
+        android:strokeWidth="2"
+        android:pathData="M30,65Q50,55 70,65"/>
+    
+    <!-- Text "MLB" -->
+    <text
+        android:text="MLB"
+        android:textColor="@color/primary"
+        android:textSize="12sp"
+        android:x="50dp"
+        android:y="85dp"
+        android:textAlignment="center"/>
+        
+</vector>

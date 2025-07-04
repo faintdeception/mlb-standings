@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="primary">#FF1976D2</color>
+    <color name="primary_container">#FFE3F2FD</color>
+    <color name="on_primary_container">#FF0D47A1</color>
+    <color name="secondary">#FF424242</color>
+    
+    <!-- Glyph Matrix colors -->
+    <color name="glyph_off">#FF000000</color>
+    <color name="glyph_dim">#FF333333</color>
+    <color name="glyph_medium">#FF666666</color>
+    <color name="glyph_bright">#FFFFFFFF</color>
+</resources>

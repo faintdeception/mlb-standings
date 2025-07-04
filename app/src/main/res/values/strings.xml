@@ -1,0 +1,17 @@
+<resources>
+    <string name="app_name">MLB Standings Glyph</string>
+    <string name="toy_name">MLB Standings</string>
+    <string name="toy_summary">Display your favorite team\'s record, top MLB teams, and division standings on the Glyph Matrix</string>
+    
+    <!-- Display modes -->
+    <string name="mode_team_record">Team Record</string>
+    <string name="mode_top_teams">Top 5 Teams</string>
+    <string name="mode_division">Division</string>
+    
+    <!-- Settings -->
+    <string name="favorite_team_setting">Favorite Team</string>
+    <string name="last_update_setting">Last Updated</string>
+    
+    <!-- Default team -->
+    <string name="default_team">New York Yankees</string>
+</resources>
