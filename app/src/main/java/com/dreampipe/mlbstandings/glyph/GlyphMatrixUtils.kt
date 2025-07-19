@@ -47,7 +47,6 @@ object GlyphMatrixUtils {
         
         val paint = Paint().apply {
             color = Color.WHITE
-            textSize = 6f
             typeface = Typeface.DEFAULT_BOLD
             isAntiAlias = false
             textAlign = Paint.Align.CENTER
@@ -56,13 +55,24 @@ object GlyphMatrixUtils {
         // Clear the canvas
         canvas.drawColor(Color.BLACK)
         
+        // Determine text size based on whether we have triple digits
+        val hasTripleDigits = wins >= 100 || losses >= 100
+        val textSize = if (hasTripleDigits) 6f else 9f
+        paint.textSize = textSize
+        
+        // Calculate vertical spacing to maximize use of space
+        val totalHeight = MATRIX_SIZE.toFloat()
+        val textHeight = textSize
+        val minSpacing = if (hasTripleDigits) 2f else 1f // Extra spacing for triple digits
+        val spacing = maxOf(minSpacing, (totalHeight - (textHeight * 2)) / 3f)
+        
         // Draw wins on top
-        canvas.drawText("W", MATRIX_SIZE / 2f, 8f, paint)
-        canvas.drawText(wins.toString(), MATRIX_SIZE / 2f, 15f, paint)
+        val winsY = spacing + textHeight
+        canvas.drawText(wins.toString(), MATRIX_SIZE / 2f, winsY, paint)
         
         // Draw losses on bottom
-        canvas.drawText("L", MATRIX_SIZE / 2f, 18f, paint)
-        canvas.drawText(losses.toString(), MATRIX_SIZE / 2f, 25f, paint)
+        val lossesY = winsY + textHeight + spacing
+        canvas.drawText(losses.toString(), MATRIX_SIZE / 2f, lossesY, paint)
         
         return bitmap
     }
@@ -95,6 +105,43 @@ object GlyphMatrixUtils {
         return bitmap
     }
     
+    /**
+     * Creates a rankings display bitmap for multiple teams
+     */
+    fun createRankingsBitmap(teams: List<String>, context: Context): Bitmap {
+        val bitmap = Bitmap.createBitmap(MATRIX_SIZE, MATRIX_SIZE, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        
+        val paint = Paint().apply {
+            color = Color.WHITE
+            textSize = 4f
+            typeface = Typeface.DEFAULT_BOLD
+            isAntiAlias = false
+            textAlign = Paint.Align.LEFT
+        }
+        
+        // Clear the canvas
+        canvas.drawColor(Color.BLACK)
+        
+        // Draw up to 5 teams vertically
+        val maxTeams = minOf(teams.size, 5)
+        val lineHeight = 5f
+        
+        for (i in 0 until maxTeams) {
+            val y = 5f + (i * lineHeight)
+            val rankText = "${i + 1}."
+            val teamText = teams[i]
+            
+            // Draw rank number
+            canvas.drawText(rankText, 2f, y, paint)
+            
+            // Draw team abbreviation
+            canvas.drawText(teamText, 10f, y, paint)
+        }
+        
+        return bitmap
+    }
+
     /**
      * Creates a simple loading animation bitmap
      */

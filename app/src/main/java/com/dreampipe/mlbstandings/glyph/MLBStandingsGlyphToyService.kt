@@ -16,16 +16,16 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-// Note: You'll need to add the actual Glyph Matrix SDK imports here
-// import com.nothing.glyph.GlyphMatrixManager
-// import com.nothing.glyph.GlyphMatrixFrame
-// import com.nothing.glyph.GlyphMatrixObject
-// import com.nothing.glyph.GlyphToy
-// import com.nothing.glyph.Glyph
+// Glyph Matrix SDK imports
+import com.nothing.ketchum.GlyphMatrixManager
+import com.nothing.ketchum.GlyphMatrixFrame
+import com.nothing.ketchum.GlyphMatrixObject
+import com.nothing.ketchum.GlyphToy
+import com.nothing.ketchum.Glyph
 
 class MLBStandingsGlyphToyService : Service() {
     
-    private var glyphMatrixManager: Any? = null // Replace with GlyphMatrixManager when SDK is available
+    private var glyphMatrixManager: GlyphMatrixManager? = null
     private lateinit var repository: MLBStandingsRepository
     private val serviceScope = CoroutineScope(Dispatchers.Main + Job())
     
@@ -41,17 +41,9 @@ class MLBStandingsGlyphToyService : Service() {
     
     private val serviceHandler = Handler(Looper.getMainLooper()) { msg ->
         when (msg.what) {
-            /* Replace with actual GlyphToy.MSG_GLYPH_TOY when SDK is available
             GlyphToy.MSG_GLYPH_TOY -> {
                 val bundle = msg.data
                 val event = bundle.getString(GlyphToy.MSG_GLYPH_TOY_DATA)
-                handleGlyphEvent(event)
-                true
-            }
-            */
-            1000 -> { // Mock message for now
-                val bundle = msg.data
-                val event = bundle.getString("event")
                 handleGlyphEvent(event)
                 true
             }
@@ -81,10 +73,10 @@ class MLBStandingsGlyphToyService : Service() {
     
     private fun init() {
         try {
-            // Initialize Glyph Matrix Manager
-            // glyphMatrixManager = GlyphMatrixManager()
-            // glyphMatrixManager?.init(callback)
-            // glyphMatrixManager?.register(Glyph.DEVICE_23112) // For Phone 3
+            // Initialize Glyph Matrix Manager using getInstance pattern
+            glyphMatrixManager = GlyphMatrixManager.getInstance(applicationContext)
+            glyphMatrixManager?.init(callback)
+            glyphMatrixManager?.register("23111") // For Nothing Phone 3
             
             Log.d(TAG, "Glyph Matrix initialized successfully")
             
@@ -100,7 +92,7 @@ class MLBStandingsGlyphToyService : Service() {
         try {
             serviceScope.coroutineContext[Job]?.cancel()
             glyphMatrixManager?.let {
-                // it.unInit()
+                it.unInit()
                 glyphMatrixManager = null
             }
             Log.d(TAG, "Cleanup completed")
@@ -111,7 +103,7 @@ class MLBStandingsGlyphToyService : Service() {
     
     private fun handleGlyphEvent(event: String?) {
         when (event) {
-            "change" -> { // GlyphToy.EVENT_CHANGE
+            GlyphToy.EVENT_CHANGE -> {
                 // Long press - cycle through display modes
                 currentDisplayMode = when (currentDisplayMode) {
                     DisplayMode.TEAM_RECORD -> DisplayMode.TOP_TEAMS
@@ -121,7 +113,7 @@ class MLBStandingsGlyphToyService : Service() {
                 Log.d(TAG, "Display mode changed to: $currentDisplayMode")
                 displayCurrentMode()
             }
-            "aod" -> { // GlyphToy.EVENT_AOD
+            GlyphToy.EVENT_AOD -> {
                 // Always-on display update (every minute)
                 Log.d(TAG, "AOD update triggered")
                 displayCurrentMode()
@@ -160,6 +152,15 @@ class MLBStandingsGlyphToyService : Service() {
     private suspend fun displayFavoriteTeamRecord() {
         Log.d(TAG, "Displaying favorite team record")
         
+        // Temporarily hardcode triple-digit values for testing
+        val bitmap = GlyphMatrixUtils.createWinLossBitmap(
+            101, // Test wins 
+            110, // Test losses
+            this@MLBStandingsGlyphToyService
+        )
+        displayBitmap(bitmap)
+        
+        /* Original code - commented out for testing
         val result = repository.getFavoriteTeamRecord()
         result.fold(
             onSuccess = { teamRecord ->
@@ -179,6 +180,7 @@ class MLBStandingsGlyphToyService : Service() {
                 displayError("Network error")
             }
         )
+        */
     }
     
     private suspend fun displayTopTeams() {
@@ -238,8 +240,6 @@ class MLBStandingsGlyphToyService : Service() {
     private fun displayBitmap(bitmap: android.graphics.Bitmap) {
         try {
             // Convert bitmap to Glyph Matrix format and display
-            // This is where you'd use the actual SDK:
-            /*
             val frameBuilder = GlyphMatrixFrame.Builder()
             val matrixObject = GlyphMatrixObject.Builder()
                 .setImageSource(bitmap)
@@ -249,9 +249,8 @@ class MLBStandingsGlyphToyService : Service() {
             
             val frame = frameBuilder.addTop(matrixObject).build(this)
             glyphMatrixManager?.setMatrixFrame(frame.render())
-            */
             
-            Log.d(TAG, "Displaying bitmap on Glyph Matrix (mock)")
+            Log.d(TAG, "Displaying bitmap on real Glyph Matrix")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to display bitmap: ${e.message}")
         }
@@ -274,15 +273,14 @@ class MLBStandingsGlyphToyService : Service() {
         }
     }
     
-    // Mock callback for Glyph Matrix Manager
-    private val callback = object {
-        // This would implement the actual callback interface from the SDK
-        fun onServiceConnected() {
-            Log.d(TAG, "Glyph Matrix service connected")
+    // Glyph Matrix Manager callback
+    private val callback = object : GlyphMatrixManager.Callback {
+        override fun onServiceConnected(name: android.content.ComponentName?) {
+            Log.d(TAG, "Glyph Matrix service connected: $name")
         }
         
-        fun onServiceDisconnected() {
-            Log.d(TAG, "Glyph Matrix service disconnected")
+        override fun onServiceDisconnected(name: android.content.ComponentName?) {
+            Log.d(TAG, "Glyph Matrix service disconnected: $name")
         }
     }
     
