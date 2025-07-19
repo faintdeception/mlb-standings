@@ -1,7 +1,6 @@
 package com.dreampipe.mlbstandings.debug
 
 import android.app.Activity
-import android.graphics.Bitmap
 import android.graphics.Color
 import android.os.Bundle
 import android.widget.GridLayout
@@ -32,8 +31,7 @@ class GlyphSimulatorActivity : AppCompatActivity() {
     
     private fun setupButtons() {
         findViewById<android.widget.Button>(R.id.btn_test_text).setOnClickListener {
-            val bitmap = GlyphMatrixUtils.createTextBitmap("MLB", this)
-            displayBitmap(bitmap)
+            displayArray(GlyphMatrixUtils.createLoadingArray(0))
         }
         
         findViewById<android.widget.Button>(R.id.btn_test_wins).setOnClickListener {
@@ -41,8 +39,7 @@ class GlyphSimulatorActivity : AppCompatActivity() {
         }
         
         findViewById<android.widget.Button>(R.id.btn_test_rankings).setOnClickListener {
-            val bitmap = GlyphMatrixUtils.createRankingsBitmap(listOf("LAD", "ATL", "NYY", "HOU", "SD"), this)
-            displayBitmap(bitmap)
+            displayArray(GlyphMatrixUtils.createDivisionArray("AL East", emptyList()))
         }
     }
     
@@ -69,19 +66,17 @@ class GlyphSimulatorActivity : AppCompatActivity() {
     }
     
     private fun showSampleDisplay() {
-        // Create a sample bitmap using your existing utilities
-        val bitmap = GlyphMatrixUtils.createTextBitmap("MLB", this)
-        displayBitmap(bitmap)
+        // Create a sample array using the loading animation
+        displayArray(GlyphMatrixUtils.createLoadingArray(0))
     }
     
-    private fun displayBitmap(bitmap: Bitmap) {
+    private fun displayArray(array: IntArray) {
         for (row in 0 until 25) {
             for (col in 0 until 25) {
-                val pixel = bitmap.getPixel(col, row)
-                val brightness = Color.red(pixel) + Color.green(pixel) + Color.blue(pixel)
+                val brightness = array[row * 25 + col]
                 
                 // Set pixel color based on brightness (simulate LED on/off)
-                val color = if (brightness > 128) Color.WHITE else Color.BLACK
+                val color = if (brightness > 500) Color.WHITE else Color.BLACK
                 pixelViews[row][col].setBackgroundColor(color)
             }
         }
@@ -91,7 +86,6 @@ class GlyphSimulatorActivity : AppCompatActivity() {
      * Call this method to test different displays
      */
     fun testWinLossDisplay(wins: Int, losses: Int) {
-        val bitmap = GlyphMatrixUtils.createWinLossBitmap(wins, losses, this)
-        displayBitmap(bitmap)
+        displayArray(GlyphMatrixUtils.createLoadingArray(wins % 10))
     }
 }

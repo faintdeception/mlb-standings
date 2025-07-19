@@ -1,175 +1,195 @@
 package com.dreampipe.mlbstandings.glyph
 
 import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.Color
-import android.graphics.Paint
-import android.graphics.Typeface
+import com.nothing.ketchum.GlyphMatrixFrame
+import com.nothing.ketchum.GlyphMatrixObject
 
 object GlyphMatrixUtils {
     
     const val MATRIX_SIZE = 25
     
     /**
-     * Creates a simple text bitmap for display on the Glyph Matrix
+     * Creates a frame displaying wins and losses using native Glyph SDK methods
      */
-    fun createTextBitmap(text: String, context: Context): Bitmap {
-        val bitmap = Bitmap.createBitmap(MATRIX_SIZE, MATRIX_SIZE, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bitmap)
+    fun createWinLossFrame(wins: Int, losses: Int, context: Context): GlyphMatrixFrame {
+        val frameBuilder = GlyphMatrixFrame.Builder()
         
-        val paint = Paint().apply {
-            color = Color.WHITE
-            textSize = 8f
-            typeface = Typeface.DEFAULT_BOLD
-            isAntiAlias = false
-            textAlign = Paint.Align.CENTER
-        }
+        // Create separate text objects at different positions
+        // Shift right and up to center better in circular display
+        val winsObject = GlyphMatrixObject.Builder()
+            .setText("W:$wins")
+            .setPosition(3, 6)  // Moved from (2, 8) - more right and up
+            .build()
         
-        // Clear the canvas
-        canvas.drawColor(Color.BLACK)
+        val lossesObject = GlyphMatrixObject.Builder()
+            .setText("L:$losses")
+            .setPosition(3, 14)  // Moved from (2, 16) - more right and up
+            .build()
         
-        // Draw text in center
-        val centerX = MATRIX_SIZE / 2f
-        val centerY = MATRIX_SIZE / 2f + paint.textSize / 3f
-        
-        canvas.drawText(text, centerX, centerY, paint)
-        
-        return bitmap
+        return frameBuilder
+            .addTop(winsObject)
+            .addMid(lossesObject)
+            .build(context)
     }
     
     /**
-     * Creates a wins-losses display bitmap
+     * Creates a frame displaying just the favorite team abbreviation
      */
-    fun createWinLossBitmap(wins: Int, losses: Int, context: Context): Bitmap {
-        val bitmap = Bitmap.createBitmap(MATRIX_SIZE, MATRIX_SIZE, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bitmap)
+    fun createFavoriteTeamFrame(teamAbbrev: String, context: Context): GlyphMatrixFrame {
+        val frameBuilder = GlyphMatrixFrame.Builder()
         
-        val paint = Paint().apply {
-            color = Color.WHITE
-            typeface = Typeface.DEFAULT_BOLD
-            isAntiAlias = false
-            textAlign = Paint.Align.CENTER
-        }
+        val teamObject = GlyphMatrixObject.Builder()
+            .setText(teamAbbrev)
+            .setPosition(8, 12)  // Center position for team abbreviation
+            .build()
         
-        // Clear the canvas
-        canvas.drawColor(Color.BLACK)
-        
-        // Determine text size based on whether we have triple digits
-        val hasTripleDigits = wins >= 100 || losses >= 100
-        val textSize = if (hasTripleDigits) 6f else 9f
-        paint.textSize = textSize
-        
-        // Calculate vertical spacing to maximize use of space
-        val totalHeight = MATRIX_SIZE.toFloat()
-        val textHeight = textSize
-        val minSpacing = if (hasTripleDigits) 2f else 1f // Extra spacing for triple digits
-        val spacing = maxOf(minSpacing, (totalHeight - (textHeight * 2)) / 3f)
-        
-        // Draw wins on top
-        val winsY = spacing + textHeight
-        canvas.drawText(wins.toString(), MATRIX_SIZE / 2f, winsY, paint)
-        
-        // Draw losses on bottom
-        val lossesY = winsY + textHeight + spacing
-        canvas.drawText(losses.toString(), MATRIX_SIZE / 2f, lossesY, paint)
-        
-        return bitmap
+        return frameBuilder
+            .addTop(teamObject)
+            .build(context)
     }
     
     /**
-     * Creates a ranking display bitmap
+     * Creates a frame displaying top teams rankings using native SDK
      */
-    fun createRankingBitmap(rank: Int, teamAbbrev: String, context: Context): Bitmap {
-        val bitmap = Bitmap.createBitmap(MATRIX_SIZE, MATRIX_SIZE, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bitmap)
+    fun createRankingsFrame(teams: List<String>, context: Context): GlyphMatrixFrame {
+        val frameBuilder = GlyphMatrixFrame.Builder()
         
-        val paint = Paint().apply {
-            color = Color.WHITE
-            textSize = 6f
-            typeface = Typeface.DEFAULT_BOLD
-            isAntiAlias = false
-            textAlign = Paint.Align.CENTER
-        }
+        val maxTeams = minOf(teams.size, 3) // Show top 3 teams
         
-        // Clear the canvas
-        canvas.drawColor(Color.BLACK)
-        
-        // Draw rank
-        canvas.drawText("#$rank", MATRIX_SIZE / 2f, 10f, paint)
-        
-        // Draw team abbreviation
-        paint.textSize = 5f
-        canvas.drawText(teamAbbrev, MATRIX_SIZE / 2f, 20f, paint)
-        
-        return bitmap
-    }
-    
-    /**
-     * Creates a rankings display bitmap for multiple teams
-     */
-    fun createRankingsBitmap(teams: List<String>, context: Context): Bitmap {
-        val bitmap = Bitmap.createBitmap(MATRIX_SIZE, MATRIX_SIZE, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bitmap)
-        
-        val paint = Paint().apply {
-            color = Color.WHITE
-            textSize = 4f
-            typeface = Typeface.DEFAULT_BOLD
-            isAntiAlias = false
-            textAlign = Paint.Align.LEFT
-        }
-        
-        // Clear the canvas
-        canvas.drawColor(Color.BLACK)
-        
-        // Draw up to 5 teams vertically
-        val maxTeams = minOf(teams.size, 5)
-        val lineHeight = 5f
-        
+        // Create separate text objects for each team at different vertical positions
         for (i in 0 until maxTeams) {
-            val y = 5f + (i * lineHeight)
-            val rankText = "${i + 1}."
-            val teamText = teams[i]
+            val displayText = "${i + 1}.${teams[i]}"
+            val yPosition = 5 + (i * 6) // Spacing: 5, 11, 17
             
-            // Draw rank number
-            canvas.drawText(rankText, 2f, y, paint)
+            val teamObject = GlyphMatrixObject.Builder()
+                .setText(displayText)
+                .setPosition(2, yPosition)
+                .build()
             
-            // Draw team abbreviation
-            canvas.drawText(teamText, 10f, y, paint)
+            // Add to different layers to avoid conflicts
+            when (i) {
+                0 -> frameBuilder.addTop(teamObject)
+                1 -> frameBuilder.addMid(teamObject)
+                2 -> frameBuilder.addLow(teamObject)
+            }
         }
         
-        return bitmap
+        return frameBuilder.build(context)
+    }
+    
+    /**
+     * Creates a frame for division standings using proper text formatting
+     * Shows the 3 teams around the favorite team's position
+     */
+    fun createDivisionFrame(division: String, teams: List<Pair<String, String>>, favoriteTeamAbbrev: String, context: Context): GlyphMatrixFrame {
+        val frameBuilder = GlyphMatrixFrame.Builder()
+        
+        // Find the favorite team's position
+        val favoriteIndex = teams.indexOfFirst { it.first == favoriteTeamAbbrev }
+        
+        // Get 3 teams around the favorite team's position
+        val teamsToShow = when {
+            favoriteIndex <= 0 -> teams.take(3) // Show top 3 if favorite is 1st or not found
+            favoriteIndex >= teams.size - 1 -> teams.takeLast(3) // Show bottom 3 if favorite is last
+            else -> teams.subList(favoriteIndex - 1, minOf(favoriteIndex + 2, teams.size)) // Show team above, favorite, and team below
+        }
+        
+        // Create separate team entries at different positions
+        for (i in teamsToShow.indices) {
+            val (teamAbbrev, record) = teamsToShow[i]
+            val actualRank = teams.indexOfFirst { it.first == teamAbbrev } + 1
+            val displayText = "$actualRank.$teamAbbrev"
+            val yPosition = 6 + (i * 5) // Position below title: 6, 11, 16
+            
+            val teamObject = GlyphMatrixObject.Builder()
+                .setText(displayText)
+                .setPosition(1, yPosition)
+                .build()
+            
+            // Add to different layers
+            when (i) {
+                0 -> frameBuilder.addMid(teamObject)
+                1 -> frameBuilder.addLow(teamObject)
+                2 -> frameBuilder.addTop(teamObject) // Won't conflict with title due to different position
+            }
+        }
+        
+        return frameBuilder.build(context)
     }
 
     /**
-     * Creates a simple loading animation bitmap
+     * Creates a frame for division standings - simplified to just use raw array for now
      */
-    fun createLoadingBitmap(frame: Int, context: Context): Bitmap {
-        val bitmap = Bitmap.createBitmap(MATRIX_SIZE, MATRIX_SIZE, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bitmap)
+    fun createDivisionArray(division: String, teams: List<Pair<String, String>>): IntArray {
+        // For now, create a simple pattern to indicate division mode
+        // This could be enhanced later with proper text rendering
+        val array = IntArray(MATRIX_SIZE * MATRIX_SIZE) { 0 }
         
-        val paint = Paint().apply {
-            color = Color.WHITE
-            style = Paint.Style.FILL
-            isAntiAlias = false
+        // Create a simple border pattern
+        for (i in 0 until MATRIX_SIZE) {
+            array[i] = 1000 // Top border
+            array[(MATRIX_SIZE - 1) * MATRIX_SIZE + i] = 1000 // Bottom border
+            array[i * MATRIX_SIZE] = 1000 // Left border  
+            array[i * MATRIX_SIZE + (MATRIX_SIZE - 1)] = 1000 // Right border
         }
         
-        // Clear the canvas
-        canvas.drawColor(Color.BLACK)
+        // Add some dots to indicate content
+        for (i in 1..4) {
+            val row = 5 + (i * 3)
+            val col = 5
+            if (row < MATRIX_SIZE && col < MATRIX_SIZE) {
+                array[row * MATRIX_SIZE + col] = 2000
+                array[row * MATRIX_SIZE + col + 2] = 1500
+            }
+        }
         
-        // Simple spinning dot animation
-        val centerX = MATRIX_SIZE / 2f
-        val centerY = MATRIX_SIZE / 2f
-        val radius = 8f
-        val angle = (frame * 30) % 360 // 30 degrees per frame
+        return array
+    }
+    
+    /**
+     * Creates a simple loading animation array
+     */
+    fun createLoadingArray(frame: Int): IntArray {
+        val array = IntArray(MATRIX_SIZE * MATRIX_SIZE) { 0 }
         
-        val x = centerX + radius * Math.cos(Math.toRadians(angle.toDouble())).toFloat()
-        val y = centerY + radius * Math.sin(Math.toRadians(angle.toDouble())).toFloat()
+        // Create a spinning dot pattern
+        val centerX = MATRIX_SIZE / 2
+        val centerY = MATRIX_SIZE / 2
+        val radius = 8
+        val angle = (frame * 30) % 360
         
-        canvas.drawCircle(x, y, 2f, paint)
+        // Calculate dot positions
+        val radians = Math.toRadians(angle.toDouble())
+        val x = (centerX + radius * Math.cos(radians)).toInt()
+        val y = (centerY + radius * Math.sin(radians)).toInt()
         
-        return bitmap
+        // Draw loading indicator
+        if (x in 0 until MATRIX_SIZE && y in 0 until MATRIX_SIZE) {
+            array[y * MATRIX_SIZE + x] = 4095 // Max brightness
+            // Add surrounding dots for better visibility
+            if (x > 0) array[y * MATRIX_SIZE + (x - 1)] = 2000
+            if (x < MATRIX_SIZE - 1) array[y * MATRIX_SIZE + (x + 1)] = 2000
+            if (y > 0) array[(y - 1) * MATRIX_SIZE + x] = 2000
+            if (y < MATRIX_SIZE - 1) array[(y + 1) * MATRIX_SIZE + x] = 2000
+        }
+        
+        return array
+    }
+    
+    /**
+     * Creates an error display frame
+     */
+    fun createErrorFrame(message: String, context: Context): GlyphMatrixFrame {
+        val frameBuilder = GlyphMatrixFrame.Builder()
+        
+        val errorObject = GlyphMatrixObject.Builder()
+            .setText("ERR:$message")
+            .setPosition(2, 12) // Center position
+            .build()
+        
+        return frameBuilder
+            .addTop(errorObject)
+            .build(context)
     }
     
     /**

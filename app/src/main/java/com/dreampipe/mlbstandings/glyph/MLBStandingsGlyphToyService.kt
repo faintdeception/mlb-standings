@@ -29,14 +29,15 @@ class MLBStandingsGlyphToyService : Service() {
     private lateinit var repository: MLBStandingsRepository
     private val serviceScope = CoroutineScope(Dispatchers.Main + Job())
     
-    private var currentDisplayMode = DisplayMode.TEAM_RECORD
+    private var currentDisplayMode = DisplayMode.FAVORITE_TEAM
     private var animationFrame = 0
     private var isLoading = false
     
     enum class DisplayMode {
+        FAVORITE_TEAM,  // Shows favorite team abbreviation (first screen)
         TEAM_RECORD,    // Shows favorite team's wins/losses
-        TOP_TEAMS,      // Shows top 5 MLB teams
-        DIVISION        // Shows division standings
+        DIVISION,       // Shows division standings
+        TOP_TEAMS       // Shows top teams in MLB
     }
     
     private val serviceHandler = Handler(Looper.getMainLooper()) { msg ->
@@ -106,9 +107,10 @@ class MLBStandingsGlyphToyService : Service() {
             GlyphToy.EVENT_CHANGE -> {
                 // Long press - cycle through display modes
                 currentDisplayMode = when (currentDisplayMode) {
-                    DisplayMode.TEAM_RECORD -> DisplayMode.TOP_TEAMS
-                    DisplayMode.TOP_TEAMS -> DisplayMode.DIVISION
-                    DisplayMode.DIVISION -> DisplayMode.TEAM_RECORD
+                    DisplayMode.FAVORITE_TEAM -> DisplayMode.TEAM_RECORD
+                    DisplayMode.TEAM_RECORD -> DisplayMode.DIVISION
+                    DisplayMode.DIVISION -> DisplayMode.TOP_TEAMS
+                    DisplayMode.TOP_TEAMS -> DisplayMode.FAVORITE_TEAM
                 }
                 Log.d(TAG, "Display mode changed to: $currentDisplayMode")
                 displayCurrentMode()
@@ -136,9 +138,10 @@ class MLBStandingsGlyphToyService : Service() {
             isLoading = true
             try {
                 when (currentDisplayMode) {
+                    DisplayMode.FAVORITE_TEAM -> displayFavoriteTeam()
                     DisplayMode.TEAM_RECORD -> displayFavoriteTeamRecord()
-                    DisplayMode.TOP_TEAMS -> displayTopTeams()
                     DisplayMode.DIVISION -> displayDivisionStandings()
+                    DisplayMode.TOP_TEAMS -> displayTopTeams()
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error displaying mode $currentDisplayMode: ${e.message}")
@@ -149,28 +152,46 @@ class MLBStandingsGlyphToyService : Service() {
         }
     }
     
+    private suspend fun displayFavoriteTeam() {
+        Log.d(TAG, "Displaying favorite team abbreviation")
+        
+        try {
+            val favoriteTeamName = repository.getFavoriteTeam()
+            val teamAbbrev = GlyphMatrixUtils.getTeamAbbreviation(favoriteTeamName)
+            
+            val frame = GlyphMatrixUtils.createFavoriteTeamFrame(
+                teamAbbrev,
+                this@MLBStandingsGlyphToyService
+            )
+            displayFrame(frame)
+        } catch (error: Exception) {
+            Log.e(TAG, "Failed to get team abbreviation: ${error.message}")
+            displayError("Config error")
+        }
+    }
+    
     private suspend fun displayFavoriteTeamRecord() {
         Log.d(TAG, "Displaying favorite team record")
         
-        // Temporarily hardcode triple-digit values for testing
-        val bitmap = GlyphMatrixUtils.createWinLossBitmap(
+        /* Temporarily hardcode triple-digit values for testing
+        val frame = GlyphMatrixUtils.createWinLossFrame(
             101, // Test wins 
             110, // Test losses
             this@MLBStandingsGlyphToyService
         )
-        displayBitmap(bitmap)
-        
-        /* Original code - commented out for testing
+        displayFrame(frame)
+        */
+        // Original code - commented out for testing
         val result = repository.getFavoriteTeamRecord()
         result.fold(
             onSuccess = { teamRecord ->
                 if (teamRecord != null) {
-                    val bitmap = GlyphMatrixUtils.createWinLossBitmap(
+                    val frame = GlyphMatrixUtils.createWinLossFrame(
                         teamRecord.wins, 
-                        teamRecord.losses, 
+                        teamRecord.losses,
                         this@MLBStandingsGlyphToyService
                     )
-                    displayBitmap(bitmap)
+                    displayFrame(frame)
                 } else {
                     displayError("Team not found")
                 }
@@ -179,8 +200,7 @@ class MLBStandingsGlyphToyService : Service() {
                 Log.e(TAG, "Failed to get team record: ${error.message}")
                 displayError("Network error")
             }
-        )
-        */
+        )        
     }
     
     private suspend fun displayTopTeams() {
@@ -189,18 +209,14 @@ class MLBStandingsGlyphToyService : Service() {
         val result = repository.getTopTeams(5)
         result.fold(
             onSuccess = { topTeams ->
-                // Cycle through top 5 teams
-                for ((index, team) in topTeams.withIndex()) {
-                    val abbrev = GlyphMatrixUtils.getTeamAbbreviation(team.team.name)
-                    val rank = team.sportRank.toIntOrNull() ?: (index + 1)
-                    val bitmap = GlyphMatrixUtils.createRankingBitmap(
-                        rank, 
-                        abbrev, 
-                        this@MLBStandingsGlyphToyService
-                    )
-                    displayBitmap(bitmap)
-                    delay(2000) // Show each team for 2 seconds
+                // Get all team abbreviations
+                val teamAbbrevs = topTeams.map { team ->
+                    GlyphMatrixUtils.getTeamAbbreviation(team.team.name)
                 }
+                
+                // Display all teams at once using rankings frame
+                val frame = GlyphMatrixUtils.createRankingsFrame(teamAbbrevs, this@MLBStandingsGlyphToyService)
+                displayFrame(frame)
             },
             onFailure = { error ->
                 Log.e(TAG, "Failed to get top teams: ${error.message}")
@@ -217,17 +233,26 @@ class MLBStandingsGlyphToyService : Service() {
         
         result.fold(
             onSuccess = { divisionTeams ->
-                // Cycle through division teams
-                for ((index, team) in divisionTeams.withIndex()) {
-                    val abbrev = GlyphMatrixUtils.getTeamAbbreviation(team.team.name)
-                    val rank = team.divisionRank.toIntOrNull() ?: (index + 1)
-                    val bitmap = GlyphMatrixUtils.createRankingBitmap(
-                        rank, 
-                        abbrev, 
-                        this@MLBStandingsGlyphToyService
-                    )
-                    displayBitmap(bitmap)
-                    delay(2000) // Show each team for 2 seconds
+                if (divisionTeams.isNotEmpty()) {
+                    // Get division name from first team's league/division info
+                    val divisionName = "AL E" // Simplified for now
+                    
+                    // Prepare teams with records
+                    val teamsWithRecords = divisionTeams.map { team ->
+                        val abbrev = GlyphMatrixUtils.getTeamAbbreviation(team.team.name)
+                        val record = "${team.wins}-${team.losses}"
+                        abbrev to record
+                    }
+                    
+                    // Get favorite team abbreviation
+                    val favoriteTeamAbbrev = GlyphMatrixUtils.getTeamAbbreviation(favoriteTeam)
+                    
+                    // Use the new frame-based approach for division standings
+                    val frame = GlyphMatrixUtils.createDivisionFrame(divisionName, teamsWithRecords, favoriteTeamAbbrev, this@MLBStandingsGlyphToyService)
+                    displayFrame(frame)
+                    Log.d(TAG, "Division $divisionName teams: $teamsWithRecords")
+                } else {
+                    displayError("No division data")
                 }
             },
             onFailure = { error ->
@@ -237,37 +262,27 @@ class MLBStandingsGlyphToyService : Service() {
         )
     }
     
-    private fun displayBitmap(bitmap: android.graphics.Bitmap) {
+    private fun displayFrame(frame: GlyphMatrixFrame) {
         try {
-            // Convert bitmap to Glyph Matrix format and display
-            val frameBuilder = GlyphMatrixFrame.Builder()
-            val matrixObject = GlyphMatrixObject.Builder()
-                .setImageSource(bitmap)
-                .setPosition(0, 0)
-                .setBrightness(255)
-                .build()
-            
-            val frame = frameBuilder.addTop(matrixObject).build(this)
             glyphMatrixManager?.setMatrixFrame(frame.render())
-            
-            Log.d(TAG, "Displaying bitmap on real Glyph Matrix")
+            Log.d(TAG, "Displaying frame on Glyph Matrix")
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to display bitmap: ${e.message}")
+            Log.e(TAG, "Failed to display frame: ${e.message}")
         }
     }
     
     private fun displayError(message: String = "Error") {
-        val bitmap = GlyphMatrixUtils.createTextBitmap("ERR", this)
-        displayBitmap(bitmap)
+        val frame = GlyphMatrixUtils.createErrorFrame("ERR", this@MLBStandingsGlyphToyService)
+        displayFrame(frame)
         Log.e(TAG, "Displaying error: $message")
     }
     
     private fun displayLoading() {
         serviceScope.launch {
-            repeat(10) { frame ->
+            repeat(10) { frameCount ->
                 if (!isLoading) return@repeat
-                val bitmap = GlyphMatrixUtils.createLoadingBitmap(frame, this@MLBStandingsGlyphToyService)
-                displayBitmap(bitmap)
+                val array = GlyphMatrixUtils.createLoadingArray(frameCount)
+                glyphMatrixManager?.setMatrixFrame(array)
                 delay(200)
             }
         }
