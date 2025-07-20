@@ -166,7 +166,7 @@ class MLBStandingsGlyphToyService : Service() {
             displayFrame(frame)
         } catch (error: Exception) {
             Log.e(TAG, "Failed to get team abbreviation: ${error.message}")
-            displayError("Config error")
+            displayError("CFG")
         }
     }
     
@@ -193,12 +193,18 @@ class MLBStandingsGlyphToyService : Service() {
                     )
                     displayFrame(frame)
                 } else {
-                    displayError("Team not found")
+                    displayError("NFD")
                 }
             },
             onFailure = { error ->
                 Log.e(TAG, "Failed to get team record: ${error.message}")
-                displayError("Network error")
+                val errorCode = when {
+                    error.message?.contains("NET_ERR") == true -> "NET"
+                    error.message?.contains("TIMEOUT") == true -> "TMO"
+                    error.message?.contains("API_ERR") == true -> "API"
+                    else -> "ERR"
+                }
+                displayError(errorCode)
             }
         )        
     }
@@ -220,7 +226,13 @@ class MLBStandingsGlyphToyService : Service() {
             },
             onFailure = { error ->
                 Log.e(TAG, "Failed to get top teams: ${error.message}")
-                displayError("Network error")
+                val errorCode = when {
+                    error.message?.contains("NET_ERR") == true -> "NET"
+                    error.message?.contains("TIMEOUT") == true -> "TMO"
+                    error.message?.contains("API_ERR") == true -> "API"
+                    else -> "ERR"
+                }
+                displayError(errorCode)
             }
         )
     }
@@ -252,12 +264,18 @@ class MLBStandingsGlyphToyService : Service() {
                     displayFrame(frame)
                     Log.d(TAG, "Division $divisionName teams: $teamsWithRecords")
                 } else {
-                    displayError("No division data")
+                    displayError("NOD")
                 }
             },
             onFailure = { error ->
                 Log.e(TAG, "Failed to get division standings: ${error.message}")
-                displayError("Network error")
+                val errorCode = when {
+                    error.message?.contains("NET_ERR") == true -> "NET"
+                    error.message?.contains("TIMEOUT") == true -> "TMO"
+                    error.message?.contains("API_ERR") == true -> "API"
+                    else -> "ERR"
+                }
+                displayError(errorCode)
             }
         )
     }
@@ -271,8 +289,8 @@ class MLBStandingsGlyphToyService : Service() {
         }
     }
     
-    private fun displayError(message: String = "Error") {
-        val frame = GlyphMatrixUtils.createErrorFrame("ERR", this@MLBStandingsGlyphToyService)
+    private fun displayError(message: String = "ERR") {
+        val frame = GlyphMatrixUtils.createErrorFrame(message, this@MLBStandingsGlyphToyService)
         displayFrame(frame)
         Log.e(TAG, "Displaying error: $message")
     }

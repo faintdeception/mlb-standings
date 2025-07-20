@@ -74,10 +74,14 @@ class MLBStandingsRepository(private val context: Context) {
                 
                 Result.success(standings)
             } else {
-                Result.failure(Exception("Failed to fetch standings: ${response.code()}"))
+                Result.failure(Exception("API_ERR_${response.code()}"))
             }
+        } catch (e: java.net.UnknownHostException) {
+            Result.failure(Exception("NET_ERR"))
+        } catch (e: java.net.SocketTimeoutException) {
+            Result.failure(Exception("TIMEOUT"))
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(Exception("UNK_ERR"))
         }
     }
     
