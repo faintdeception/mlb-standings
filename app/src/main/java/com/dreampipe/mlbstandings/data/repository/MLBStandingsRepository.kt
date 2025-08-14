@@ -13,6 +13,7 @@ import com.dreampipe.mlbstandings.data.model.TeamRecord
 import com.google.gson.Gson
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.delay
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.util.Calendar
@@ -33,6 +34,38 @@ class MLBStandingsRepository(private val context: Context) {
         private val CACHED_STANDINGS_KEY = stringPreferencesKey("cached_standings")
         private val LAST_UPDATE_KEY = longPreferencesKey("last_update")
         private val FAVORITE_TEAM_KEY = stringPreferencesKey("favorite_team")
+        private const val MAX_RETRY_ATTEMPTS = 3
+        private const val RETRY_DELAY_MS = 2000L
+    }
+    
+    private suspend fun <T> retryNetworkCall(
+        maxAttempts: Int = MAX_RETRY_ATTEMPTS,
+        delayMs: Long = RETRY_DELAY_MS,
+        call: suspend () -> T
+    ): T {
+        var lastException: Exception? = null
+        
+        repeat(maxAttempts) { attempt ->
+            try {
+                return call()
+            } catch (e: java.net.UnknownHostException) {
+                lastException = e
+                if (attempt < maxAttempts - 1) {
+                    delay(delayMs * (attempt + 1)) // Exponential backoff
+                }
+            } catch (e: java.net.SocketTimeoutException) {
+                lastException = e
+                if (attempt < maxAttempts - 1) {
+                    delay(delayMs * (attempt + 1))
+                }
+            } catch (e: Exception) {
+                // For non-network errors, don't retry
+                throw e
+            }
+        }
+        
+        // All retries failed
+        throw lastException ?: Exception("Unknown network error")
     }
     
     suspend fun getStandings(): Result<MLBStandingsResponse> {
@@ -61,27 +94,53 @@ class MLBStandingsRepository(private val context: Context) {
                 }
             }
             
-            // Fetch fresh data
-            val response = mlbApiService.getStandings()
-            if (response.isSuccessful) {
-                val standings = response.body()!!
-                
-                // Cache the data
-                context.dataStore.edit { preferences ->
-                    preferences[CACHED_STANDINGS_KEY] = gson.toJson(standings)
-                    preferences[LAST_UPDATE_KEY] = System.currentTimeMillis()
+            // Try to fetch fresh data with retry logic
+            try {
+                val response = retryNetworkCall {
+                    mlbApiService.getStandings()
                 }
                 
-                Result.success(standings)
-            } else {
-                Result.failure(Exception("API_ERR_${response.code()}"))
+                if (response.isSuccessful) {
+                    val standings = response.body()!!
+                    
+                    // Cache the data
+                    context.dataStore.edit { preferences ->
+                        preferences[CACHED_STANDINGS_KEY] = gson.toJson(standings)
+                        preferences[LAST_UPDATE_KEY] = System.currentTimeMillis()
+                    }
+                    
+                    Result.success(standings)
+                } else {
+                    // API error - try to fall back to stale cache
+                    tryStaleCache() ?: Result.failure(Exception("API_ERR_${response.code()}"))
+                }
+            } catch (e: java.net.UnknownHostException) {
+                // Network error after retries - try stale cache
+                tryStaleCache() ?: Result.failure(Exception("NET_ERR"))
+            } catch (e: java.net.SocketTimeoutException) {
+                // Timeout after retries - try stale cache
+                tryStaleCache() ?: Result.failure(Exception("TIMEOUT"))
+            } catch (e: Exception) {
+                // Other error - try stale cache
+                tryStaleCache() ?: Result.failure(Exception("UNK_ERR"))
             }
-        } catch (e: java.net.UnknownHostException) {
-            Result.failure(Exception("NET_ERR"))
-        } catch (e: java.net.SocketTimeoutException) {
-            Result.failure(Exception("TIMEOUT"))
         } catch (e: Exception) {
-            Result.failure(Exception("UNK_ERR"))
+            tryStaleCache() ?: Result.failure(Exception("UNK_ERR"))
+        }
+    }
+    
+    private suspend fun tryStaleCache(): Result<MLBStandingsResponse>? {
+        return try {
+            val cachedJson = context.dataStore.data.map { preferences ->
+                preferences[CACHED_STANDINGS_KEY]
+            }.first()
+            
+            cachedJson?.let {
+                val cachedData = gson.fromJson(it, MLBStandingsResponse::class.java)
+                Result.success(cachedData)
+            }
+        } catch (e: Exception) {
+            null
         }
     }
     

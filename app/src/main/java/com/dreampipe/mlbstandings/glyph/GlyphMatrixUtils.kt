@@ -183,7 +183,7 @@ object GlyphMatrixUtils {
         val frameBuilder = GlyphMatrixFrame.Builder()
         
         val errorObject = GlyphMatrixObject.Builder()
-            .setText("ERR:$message")
+            .setText("!$message")
             .setPosition(2, 12) // Center position
             .build()
         
