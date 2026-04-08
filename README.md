@@ -5,7 +5,7 @@ A Nothing Phone Glyph Matrix application that displays MLB standings information
 ## Features
 
 - **Favorite Team Record**: Display your favorite team's current wins and losses
-- **Top 5 MLB Teams**: Cycle through the top 5 teams in MLB by overall ranking
+- **Top 3 MLB Teams**: Cycle through the top 3 teams in MLB by overall ranking
 - **Division Standings**: Show standings for your favorite team's division
 - **Data Caching**: Fetches data once per day to minimize API calls
 - **Glyph Button Integration**: Use short/long press to navigate and change display modes
@@ -15,7 +15,7 @@ A Nothing Phone Glyph Matrix application that displays MLB standings information
 The app has three display modes that you can cycle through using the Glyph Button:
 
 1. **Team Record**: Shows your favorite team's wins/losses in a compact format
-2. **Top Teams**: Displays the top 5 MLB teams with their rankings and abbreviations
+2. **Top Teams**: Displays the top 3 MLB teams with their rankings and abbreviations
 3. **Division**: Shows all teams in your favorite team's division with rankings
 
 ## Controls
@@ -50,7 +50,8 @@ The app has three display modes that you can cycle through using the Glyph Butto
    - Build and run the application
 
 4. **Enable the Glyph Toy**:
-   - Go to Settings → Glyph Interface on your Nothing Phone
+   - Open the app and tap **Activate Glyph Toy** if your Nothing system exposes the Glyph Toys manager shortcut
+   - Or go to Settings → Glyph Interface on your Nothing Phone
    - Find "MLB Standings" in the Glyph Toys list
    - Move it from "Disabled" to "Active" state
 
@@ -59,7 +60,8 @@ The app has three display modes that you can cycle through using the Glyph Butto
 1. **Open the MLB Standings app** on your phone
 2. **Select your favorite team** from the dropdown menu
 3. **Tap "Refresh Data"** to fetch the latest standings
-4. **Test the display** using the "Test Glyph Display" button
+4. **Tap "Activate Glyph Toy"** to jump to Nothing's toy manager on supported systems
+5. **Test the display** using the "Test Glyph Display" button
 
 ## Data Source
 
@@ -73,8 +75,8 @@ This app uses the official MLB Stats API:
 ### Architecture
 
 - **Language**: Kotlin
-- **Min SDK**: 26 (Android 8.0)
-- **Target SDK**: 34 (Android 14)
+- **Min SDK**: 34 (Android 14)
+- **Target SDK**: 36 (Android 16)
 - **Dependencies**:
   - GlyphMatrixSDK (Nothing Developer Kit)
   - Retrofit (API calls)
@@ -111,14 +113,14 @@ app/src/main/java/com/dreampipe/mlbstandings/
 1. Install and open the app
 2. Select your favorite MLB team
 3. Tap "Refresh Data" to download current standings
-4. Enable the Glyph Toy in phone settings
+4. Tap **Activate Glyph Toy** or enable the Glyph Toy in phone settings
 
 ### Daily Usage
 
 1. **Short press** the Glyph Button to activate MLB Standings
 2. **Long press** to cycle through display modes:
    - Your team's record (W/L)
-   - Top 5 MLB teams
+   - Top 3 MLB teams
    - Your team's division standings
 3. Data automatically refreshes once per day
 
@@ -140,7 +142,7 @@ The app includes comprehensive logging. Connect to Android Studio and check the 
 
 This project is built following Nothing's minimalist philosophy - simple, functional, and unobtrusive. When contributing:
 
-1. Keep the display simple and readable on the 25x25 Glyph Matrix
+1. Keep the display simple and readable on both the 25x25 and compact 13x13 Glyph Matrix layouts
 2. Minimize network calls (respect the once-per-day cache)
 3. Ensure all interactions work with Glyph Button only
 4. Test thoroughly on actual Nothing Phone hardware

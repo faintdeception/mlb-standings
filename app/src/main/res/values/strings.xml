@@ -2,15 +2,30 @@
     <string name="app_name">MLB Standings Glyph</string>
     <string name="toy_name">MLB Standings</string>
     <string name="toy_summary">Display your favorite team\'s record, top MLB teams, and division standings on the Glyph Matrix</string>
+        <string name="configure_glyph_display">Configure your MLB Glyph display</string>
     
     <!-- Display modes -->
     <string name="mode_team_record">Team Record</string>
-    <string name="mode_top_teams">Top 5 Teams</string>
+        <string name="mode_top_teams">Top 3 Teams</string>
     <string name="mode_division">Division</string>
     
     <!-- Settings -->
     <string name="favorite_team_setting">Favorite Team</string>
     <string name="last_update_setting">Last Updated</string>
+        <string name="never_updated">Never updated</string>
+        <string name="refresh_data">Refresh Data</string>
+        <string name="refreshing">Refreshing...</string>
+        <string name="test_glyph_display">Test Glyph Display</string>
+        <string name="testing">Testing...</string>
+        <string name="activate_glyph_toy">Activate Glyph Toy</string>
+        <string name="activate_toy_unavailable">Glyph Toys manager is not available on this system.</string>
+        <string name="how_to_use_text">How to use:
+• Tap Activate Glyph Toy to add this toy in Nothing settings
+• Short press Glyph Button to activate
+• Long press to cycle through modes:
+    - Team Record
+    - Top 3 Teams
+    - Division Standings</string>
     
     <!-- Default team -->
     <string name="default_team">New York Yankees</string>

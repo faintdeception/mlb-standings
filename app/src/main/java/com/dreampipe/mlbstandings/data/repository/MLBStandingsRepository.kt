@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.dreampipe.mlbstandings.data.api.MLBApiService
+import com.dreampipe.mlbstandings.data.model.DivisionStandings
 import com.dreampipe.mlbstandings.data.model.MLBStandingsResponse
 import com.dreampipe.mlbstandings.data.model.TeamRecord
 import com.google.gson.Gson
@@ -219,7 +220,7 @@ class MLBStandingsRepository(private val context: Context) {
         }
     }
     
-    suspend fun getTopTeams(count: Int = 5): Result<List<TeamRecord>> {
+    suspend fun getTopTeams(count: Int = 3): Result<List<TeamRecord>> {
         return getStandings().map { standings ->
             standings.records.flatMap { it.teamRecords }
                 .sortedBy { it.sportRank.toIntOrNull() ?: Int.MAX_VALUE }
@@ -227,7 +228,7 @@ class MLBStandingsRepository(private val context: Context) {
         }
     }
     
-    suspend fun getDivisionStandings(teamName: String): Result<List<TeamRecord>> {
+    suspend fun getDivisionStandings(teamName: String): Result<DivisionStandings?> {
         val favoriteTeamId = getFavoriteTeamId() ?: TEAM_IDS[teamName]
         return getStandings().map { standings ->
             val teamDivision = standings.records.find { division ->
@@ -236,7 +237,12 @@ class MLBStandingsRepository(private val context: Context) {
                         teamNamesMatch(teamRecord.team.name, teamName)
                 }
             }
-            teamDivision?.teamRecords?.sortedBy { it.divisionRank.toIntOrNull() ?: Int.MAX_VALUE } ?: emptyList()
+            teamDivision?.let { division ->
+                DivisionStandings(
+                    divisionName = division.division.name.orEmpty(),
+                    teamRecords = division.teamRecords.sortedBy { it.divisionRank.toIntOrNull() ?: Int.MAX_VALUE }
+                )
+            }
         }
     }
 

@@ -66,7 +66,17 @@
         android:id="@+id/testButton"
         android:layout_width="match_parent"
         android:layout_height="56dp"
-        android:text="Test Glyph Display"
+        android:text="@string/test_glyph_display"
+        android:textColor="@color/primary"
+        android:background="@drawable/button_secondary"
+        android:layout_marginBottom="12dp"
+        android:textSize="16sp" />
+
+    <Button
+        android:id="@+id/activateToyButton"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:text="@string/activate_glyph_toy"
         android:textColor="@color/primary"
         android:background="@drawable/button_secondary"
         android:layout_marginBottom="24dp"
@@ -75,7 +85,7 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="How to use:\n• Short press Glyph Button to activate\n• Long press to cycle through modes:\n  - Team Record\n  - Top 5 Teams\n  - Division Standings"
+        android:text="@string/how_to_use_text"
         android:textSize="14sp"
         android:textColor="@color/secondary"
         android:lineSpacingMultiplier="1.2"

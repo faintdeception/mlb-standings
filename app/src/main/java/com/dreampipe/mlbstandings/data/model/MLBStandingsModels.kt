@@ -18,6 +18,11 @@ data class DivisionRecord(
     val teamRecords: List<TeamRecord>
 )
 
+data class DivisionStandings(
+    val divisionName: String,
+    val teamRecords: List<TeamRecord>
+)
+
 data class League(
     @SerializedName("id")
     val id: Int,
