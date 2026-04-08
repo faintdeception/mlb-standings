@@ -1,18 +1,64 @@
 package com.dreampipe.mlbstandings.glyph
 
 import android.content.Context
+import com.nothing.ketchum.Common
 import com.nothing.ketchum.GlyphMatrixFrame
 import com.nothing.ketchum.GlyphMatrixObject
+import kotlin.math.roundToInt
 
 object GlyphMatrixUtils {
     
-    const val MATRIX_SIZE = 25
+    private const val DEFAULT_MATRIX_SIZE = 25
+    private const val COMPACT_MATRIX_SIZE = 13
+
+    fun getMatrixSize(): Int {
+        val reportedSize = Common.getDeviceMatrixLength()
+        return reportedSize.takeIf { it > 0 } ?: DEFAULT_MATRIX_SIZE
+    }
+
+    private fun isCompactMatrix(): Boolean = getMatrixSize() <= COMPACT_MATRIX_SIZE
+
+    private fun scaleCoordinate(value: Int): Int {
+        val matrixSize = getMatrixSize()
+        if (matrixSize == DEFAULT_MATRIX_SIZE) {
+            return value
+        }
+
+        val scaled = (value.toFloat() / DEFAULT_MATRIX_SIZE) * matrixSize
+        return scaled.roundToInt().coerceIn(0, matrixSize - 1)
+    }
+
+    private fun compactCenterX(text: String): Int {
+        val matrixSize = getMatrixSize()
+        val estimatedWidth = (text.length * 2).coerceAtLeast(1)
+        return ((matrixSize - estimatedWidth) / 2).coerceAtLeast(0)
+    }
     
     /**
      * Creates a frame displaying wins and losses using native Glyph SDK methods
      */
     fun createWinLossFrame(wins: Int, losses: Int, context: Context): GlyphMatrixFrame {
         val frameBuilder = GlyphMatrixFrame.Builder()
+
+        if (isCompactMatrix()) {
+            val winsText = "W$wins"
+            val lossesText = "L$losses"
+
+            val winsObject = GlyphMatrixObject.Builder()
+                .setText(winsText)
+                .setPosition(compactCenterX(winsText), scaleCoordinate(5))
+                .build()
+
+            val lossesObject = GlyphMatrixObject.Builder()
+                .setText(lossesText)
+                .setPosition(compactCenterX(lossesText), scaleCoordinate(14))
+                .build()
+
+            return frameBuilder
+                .addTop(winsObject)
+                .addMid(lossesObject)
+                .build(context)
+        }
         
         // Create separate text objects at different positions
         // Shift right and up to center better in circular display
@@ -37,10 +83,12 @@ object GlyphMatrixUtils {
      */
     fun createFavoriteTeamFrame(teamAbbrev: String, context: Context): GlyphMatrixFrame {
         val frameBuilder = GlyphMatrixFrame.Builder()
+        val xPosition = if (isCompactMatrix()) compactCenterX(teamAbbrev) else 8
+        val yPosition = if (isCompactMatrix()) scaleCoordinate(12) else 12
         
         val teamObject = GlyphMatrixObject.Builder()
             .setText(teamAbbrev)
-            .setPosition(8, 12)  // Center position for team abbreviation
+            .setPosition(xPosition, yPosition)
             .build()
         
         return frameBuilder
@@ -53,6 +101,18 @@ object GlyphMatrixUtils {
      */
     fun createRankingsFrame(teams: List<String>, context: Context): GlyphMatrixFrame {
         val frameBuilder = GlyphMatrixFrame.Builder()
+
+        if (isCompactMatrix()) {
+            val leader = teams.firstOrNull()?.let { "1$it" } ?: "N/A"
+            val leaderObject = GlyphMatrixObject.Builder()
+                .setText(leader)
+                .setPosition(compactCenterX(leader), scaleCoordinate(12))
+                .build()
+
+            return frameBuilder
+                .addTop(leaderObject)
+                .build(context)
+        }
         
         val maxTeams = minOf(teams.size, 3) // Show top 3 teams
         
@@ -78,14 +138,31 @@ object GlyphMatrixUtils {
     }
     
     /**
-     * Creates a frame for division standings using proper text formatting
-     * Shows the 3 teams around the favorite team's position
+     * Creates a frame for division standings using proper text formatting.
+     * Shows the 3 division teams around the favorite team's position.
      */
-    fun createDivisionFrame(division: String, teams: List<Pair<String, String>>, favoriteTeamAbbrev: String, context: Context): GlyphMatrixFrame {
+    fun createDivisionFrame(teams: List<String>, favoriteTeamAbbrev: String, context: Context): GlyphMatrixFrame {
         val frameBuilder = GlyphMatrixFrame.Builder()
         
         // Find the favorite team's position
-        val favoriteIndex = teams.indexOfFirst { it.first == favoriteTeamAbbrev }
+        val favoriteIndex = teams.indexOfFirst { it == favoriteTeamAbbrev }
+
+        if (isCompactMatrix()) {
+            val compactText = if (favoriteIndex >= 0) {
+                "${favoriteIndex + 1}$favoriteTeamAbbrev"
+            } else {
+                favoriteTeamAbbrev
+            }
+
+            val compactObject = GlyphMatrixObject.Builder()
+                .setText(compactText)
+                .setPosition(compactCenterX(compactText), scaleCoordinate(12))
+                .build()
+
+            return frameBuilder
+                .addTop(compactObject)
+                .build(context)
+        }
         
         // Get 3 teams around the favorite team's position
         val teamsToShow = when {
@@ -96,8 +173,8 @@ object GlyphMatrixUtils {
         
         // Create separate team entries at different positions
         for (i in teamsToShow.indices) {
-            val (teamAbbrev, record) = teamsToShow[i]
-            val actualRank = teams.indexOfFirst { it.first == teamAbbrev } + 1
+            val teamAbbrev = teamsToShow[i]
+            val actualRank = teams.indexOfFirst { it == teamAbbrev } + 1
             val displayText = "$actualRank.$teamAbbrev"
             val yPosition = 6 + (i * 5) // Position below title: 6, 11, 16
             
@@ -118,28 +195,32 @@ object GlyphMatrixUtils {
     }
 
     /**
-     * Creates a frame for division standings - simplified to just use raw array for now
+     * Creates a simple debug-only placeholder array for division mode previews.
      */
+    @Suppress("UNUSED_PARAMETER")
     fun createDivisionArray(division: String, teams: List<Pair<String, String>>): IntArray {
         // For now, create a simple pattern to indicate division mode
         // This could be enhanced later with proper text rendering
-        val array = IntArray(MATRIX_SIZE * MATRIX_SIZE) { 0 }
+        val matrixSize = getMatrixSize()
+        val array = IntArray(matrixSize * matrixSize) { 0 }
         
         // Create a simple border pattern
-        for (i in 0 until MATRIX_SIZE) {
+        for (i in 0 until matrixSize) {
             array[i] = 1000 // Top border
-            array[(MATRIX_SIZE - 1) * MATRIX_SIZE + i] = 1000 // Bottom border
-            array[i * MATRIX_SIZE] = 1000 // Left border  
-            array[i * MATRIX_SIZE + (MATRIX_SIZE - 1)] = 1000 // Right border
+            array[(matrixSize - 1) * matrixSize + i] = 1000 // Bottom border
+            array[i * matrixSize] = 1000 // Left border
+            array[i * matrixSize + (matrixSize - 1)] = 1000 // Right border
         }
         
         // Add some dots to indicate content
         for (i in 1..4) {
-            val row = 5 + (i * 3)
-            val col = 5
-            if (row < MATRIX_SIZE && col < MATRIX_SIZE) {
-                array[row * MATRIX_SIZE + col] = 2000
-                array[row * MATRIX_SIZE + col + 2] = 1500
+            val row = scaleCoordinate(5 + (i * 3))
+            val col = scaleCoordinate(5)
+            if (row < matrixSize && col < matrixSize) {
+                array[row * matrixSize + col] = 2000
+                if (col + 2 < matrixSize) {
+                    array[row * matrixSize + col + 2] = 1500
+                }
             }
         }
         
@@ -150,12 +231,13 @@ object GlyphMatrixUtils {
      * Creates a simple loading animation array
      */
     fun createLoadingArray(frame: Int): IntArray {
-        val array = IntArray(MATRIX_SIZE * MATRIX_SIZE) { 0 }
+        val matrixSize = getMatrixSize()
+        val array = IntArray(matrixSize * matrixSize) { 0 }
         
         // Create a spinning dot pattern
-        val centerX = MATRIX_SIZE / 2
-        val centerY = MATRIX_SIZE / 2
-        val radius = 8
+        val centerX = matrixSize / 2
+        val centerY = matrixSize / 2
+        val radius = (matrixSize / 3).coerceAtLeast(2)
         val angle = (frame * 30) % 360
         
         // Calculate dot positions
@@ -164,13 +246,13 @@ object GlyphMatrixUtils {
         val y = (centerY + radius * Math.sin(radians)).toInt()
         
         // Draw loading indicator
-        if (x in 0 until MATRIX_SIZE && y in 0 until MATRIX_SIZE) {
-            array[y * MATRIX_SIZE + x] = 4095 // Max brightness
+        if (x in 0 until matrixSize && y in 0 until matrixSize) {
+            array[y * matrixSize + x] = 4095 // Max brightness
             // Add surrounding dots for better visibility
-            if (x > 0) array[y * MATRIX_SIZE + (x - 1)] = 2000
-            if (x < MATRIX_SIZE - 1) array[y * MATRIX_SIZE + (x + 1)] = 2000
-            if (y > 0) array[(y - 1) * MATRIX_SIZE + x] = 2000
-            if (y < MATRIX_SIZE - 1) array[(y + 1) * MATRIX_SIZE + x] = 2000
+            if (x > 0) array[y * matrixSize + (x - 1)] = 2000
+            if (x < matrixSize - 1) array[y * matrixSize + (x + 1)] = 2000
+            if (y > 0) array[(y - 1) * matrixSize + x] = 2000
+            if (y < matrixSize - 1) array[(y + 1) * matrixSize + x] = 2000
         }
         
         return array
@@ -181,10 +263,13 @@ object GlyphMatrixUtils {
      */
     fun createErrorFrame(message: String, context: Context): GlyphMatrixFrame {
         val frameBuilder = GlyphMatrixFrame.Builder()
+        val displayMessage = if (isCompactMatrix()) message.take(3) else "!$message"
+        val xPosition = if (isCompactMatrix()) compactCenterX(displayMessage) else 2
+        val yPosition = if (isCompactMatrix()) scaleCoordinate(12) else 12
         
         val errorObject = GlyphMatrixObject.Builder()
-            .setText("!$message")
-            .setPosition(2, 12) // Center position
+            .setText(displayMessage)
+            .setPosition(xPosition, yPosition)
             .build()
         
         return frameBuilder

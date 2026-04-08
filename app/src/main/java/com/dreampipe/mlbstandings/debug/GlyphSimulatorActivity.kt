@@ -16,6 +16,8 @@ class GlyphSimulatorActivity : AppCompatActivity() {
     
     private lateinit var gridLayout: GridLayout
     private lateinit var pixelViews: Array<Array<ImageView>>
+    private val matrixSize: Int
+        get() = GlyphMatrixUtils.getMatrixSize()
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -44,10 +46,11 @@ class GlyphSimulatorActivity : AppCompatActivity() {
     
     private fun setupGrid() {
         gridLayout = findViewById(R.id.glyph_grid)
-        gridLayout.rowCount = 25
-        gridLayout.columnCount = 25
-        pixelViews = Array(25) {
-            Array(25) {
+        gridLayout.removeAllViews()
+        gridLayout.rowCount = matrixSize
+        gridLayout.columnCount = matrixSize
+        pixelViews = Array(matrixSize) {
+            Array(matrixSize) {
                 ImageView(this).apply {
                     layoutParams = GridLayout.LayoutParams().apply {
                         width = 8
@@ -68,9 +71,9 @@ class GlyphSimulatorActivity : AppCompatActivity() {
     }
     
     private fun displayArray(array: IntArray) {
-        for (row in 0 until 25) {
-            for (col in 0 until 25) {
-                val brightness = array[row * 25 + col]
+        for (row in 0 until matrixSize) {
+            for (col in 0 until matrixSize) {
+                val brightness = array[row * matrixSize + col]
                 
                 // Set pixel color based on brightness (simulate LED on/off)
                 val color = if (brightness > 500) Color.WHITE else Color.BLACK

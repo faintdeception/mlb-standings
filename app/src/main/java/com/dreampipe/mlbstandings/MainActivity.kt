@@ -1,5 +1,8 @@
 package com.dreampipe.mlbstandings
 
+import android.content.ActivityNotFoundException
+import android.content.ComponentName
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.widget.ArrayAdapter
@@ -21,6 +24,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var lastUpdateText: TextView
     private lateinit var refreshButton: Button
     private lateinit var testButton: Button
+    private lateinit var activateToyButton: Button
     
     private val mlbTeams = arrayOf(
         "Arizona Diamondbacks",
@@ -74,6 +78,8 @@ class MainActivity : AppCompatActivity() {
         lastUpdateText = findViewById(R.id.lastUpdateText)
         refreshButton = findViewById(R.id.refreshButton)
         testButton = findViewById(R.id.testButton)
+        activateToyButton = findViewById(R.id.activateToyButton)
+        activateToyButton.isEnabled = canOpenGlyphToysManager()
     }
     
     private fun setupTeamSpinner() {
@@ -89,6 +95,10 @@ class MainActivity : AppCompatActivity() {
         
         testButton.setOnClickListener {
             testGlyphDisplay()
+        }
+
+        activateToyButton.setOnClickListener {
+            openGlyphToysManager()
         }
         
         // Save team selection when changed
@@ -189,6 +199,33 @@ class MainActivity : AppCompatActivity() {
         val currentTime = SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault()).format(Date())
         lastUpdateText.text = "Last checked: $currentTime"
     }
+
+    private fun openGlyphToysManager() {
+        if (!canOpenGlyphToysManager()) {
+            showToast(getString(R.string.activate_toy_unavailable))
+            return
+        }
+
+        try {
+            startActivity(createGlyphToysManagerIntent())
+        } catch (error: ActivityNotFoundException) {
+            Log.w(TAG, "Glyph Toys manager not available: ${error.message}")
+            showToast(getString(R.string.activate_toy_unavailable))
+        }
+    }
+
+    private fun canOpenGlyphToysManager(): Boolean {
+        return createGlyphToysManagerIntent().resolveActivity(packageManager) != null
+    }
+
+    private fun createGlyphToysManagerIntent(): Intent {
+        return Intent().apply {
+            component = ComponentName(
+                GLYPH_TOYS_MANAGER_PACKAGE,
+                GLYPH_TOYS_MANAGER_ACTIVITY
+            )
+        }
+    }
     
     private fun showToast(message: String) {
         android.widget.Toast.makeText(this, message, android.widget.Toast.LENGTH_SHORT).show()
@@ -196,5 +233,8 @@ class MainActivity : AppCompatActivity() {
     
     companion object {
         private const val TAG = "MainActivity"
+        private const val GLYPH_TOYS_MANAGER_PACKAGE = "com.nothing.thirdparty"
+        private const val GLYPH_TOYS_MANAGER_ACTIVITY =
+            "com.nothing.thirdparty.matrix.toys.manager.ToysManagerActivity"
     }
 }

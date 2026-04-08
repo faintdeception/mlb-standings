@@ -30,18 +30,6 @@
             </intent-filter>
         </activity>
 
-        <!-- Debug: Glyph Matrix Simulator -->
-        <activity
-            android:name=".debug.GlyphSimulatorActivity"
-            android:exported="true"
-            android:label="Glyph Simulator"
-            android:theme="@style/Theme.MLBStandingsGlyph">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
-
         <!-- MLB Standings Glyph Toy Service -->
         <service android:name=".glyph.MLBStandingsGlyphToyService"
             android:exported="true">

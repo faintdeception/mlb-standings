@@ -6,20 +6,19 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
-import android.os.Message
 import android.os.Messenger
 import android.util.Log
 import com.dreampipe.mlbstandings.data.repository.MLBStandingsRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
 // Glyph Matrix SDK imports
+import com.nothing.ketchum.Common
 import com.nothing.ketchum.GlyphMatrixManager
 import com.nothing.ketchum.GlyphMatrixFrame
-import com.nothing.ketchum.GlyphMatrixObject
 import com.nothing.ketchum.GlyphToy
 import com.nothing.ketchum.Glyph
 
@@ -27,17 +26,17 @@ class MLBStandingsGlyphToyService : Service() {
     
     private var glyphMatrixManager: GlyphMatrixManager? = null
     private lateinit var repository: MLBStandingsRepository
-    private val serviceScope = CoroutineScope(Dispatchers.Main + Job())
+    private var serviceJob: Job? = null
+    private lateinit var serviceScope: CoroutineScope
     
     private var currentDisplayMode = DisplayMode.FAVORITE_TEAM
-    private var animationFrame = 0
     private var isLoading = false
     
     enum class DisplayMode {
         FAVORITE_TEAM,  // Shows favorite team abbreviation (first screen)
         TEAM_RECORD,    // Shows favorite team's wins/losses
         DIVISION,       // Shows division standings
-        TOP_TEAMS       // Shows top teams in MLB
+        TOP_TEAMS       // Shows top 3 teams in MLB
     }
     
     private val serviceHandler = Handler(Looper.getMainLooper()) { msg ->
@@ -57,6 +56,7 @@ class MLBStandingsGlyphToyService : Service() {
     override fun onCreate() {
         super.onCreate()
         repository = MLBStandingsRepository(this)
+        ensureServiceScope()
         Log.d(TAG, "MLB Standings Glyph Toy Service created")
     }
     
@@ -74,15 +74,13 @@ class MLBStandingsGlyphToyService : Service() {
     
     private fun init() {
         try {
+            ensureServiceScope()
+
             // Initialize Glyph Matrix Manager using getInstance pattern
             glyphMatrixManager = GlyphMatrixManager.getInstance(applicationContext)
             glyphMatrixManager?.init(callback)
-            glyphMatrixManager?.register("23111") // For Nothing Phone 3
             
-            Log.d(TAG, "Glyph Matrix initialized successfully")
-            
-            // Start displaying data
-            displayCurrentMode()
+            Log.d(TAG, "Glyph Matrix initialization requested")
             
         } catch (e: Exception) {
             Log.e(TAG, "Failed to initialize Glyph Matrix: ${e.message}")
@@ -91,7 +89,8 @@ class MLBStandingsGlyphToyService : Service() {
     
     private fun cleanup() {
         try {
-            serviceScope.coroutineContext[Job]?.cancel()
+            serviceJob?.cancel()
+            serviceJob = null
             glyphMatrixManager?.let {
                 it.unInit()
                 glyphMatrixManager = null
@@ -212,7 +211,7 @@ class MLBStandingsGlyphToyService : Service() {
     private suspend fun displayTopTeams() {
         Log.d(TAG, "Displaying top teams")
         
-        val result = repository.getTopTeams(5)
+        val result = repository.getTopTeams(3)
         result.fold(
             onSuccess = { topTeams ->
                 // Get all team abbreviations
@@ -244,25 +243,25 @@ class MLBStandingsGlyphToyService : Service() {
         val result = repository.getDivisionStandings(favoriteTeam)
         
         result.fold(
-            onSuccess = { divisionTeams ->
-                if (divisionTeams.isNotEmpty()) {
-                    // Get division name from first team's league/division info
-                    val divisionName = "AL E" // Simplified for now
+            onSuccess = { divisionStandings ->
+                if (divisionStandings != null && divisionStandings.teamRecords.isNotEmpty()) {
+                    val divisionName = formatDivisionName(divisionStandings.divisionName)
                     
-                    // Prepare teams with records
-                    val teamsWithRecords = divisionTeams.map { team ->
-                        val abbrev = GlyphMatrixUtils.getTeamAbbreviation(team.team.name)
-                        val record = "${team.wins}-${team.losses}"
-                        abbrev to record
+                    // Prepare team abbreviations in division rank order.
+                    val divisionTeams = divisionStandings.teamRecords.map { team ->
+                        GlyphMatrixUtils.getTeamAbbreviation(team.team.name)
                     }
                     
                     // Get favorite team abbreviation
                     val favoriteTeamAbbrev = GlyphMatrixUtils.getTeamAbbreviation(favoriteTeam)
                     
-                    // Use the new frame-based approach for division standings
-                    val frame = GlyphMatrixUtils.createDivisionFrame(divisionName, teamsWithRecords, favoriteTeamAbbrev, this@MLBStandingsGlyphToyService)
+                    val frame = GlyphMatrixUtils.createDivisionFrame(
+                        divisionTeams,
+                        favoriteTeamAbbrev,
+                        this@MLBStandingsGlyphToyService
+                    )
                     displayFrame(frame)
-                    Log.d(TAG, "Division $divisionName teams: $teamsWithRecords")
+                    Log.d(TAG, "Division $divisionName teams: $divisionTeams")
                 } else {
                     displayError("NOD")
                 }
@@ -294,21 +293,37 @@ class MLBStandingsGlyphToyService : Service() {
         displayFrame(frame)
         Log.e(TAG, "Displaying error: $message")
     }
-    
-    private fun displayLoading() {
-        serviceScope.launch {
-            repeat(10) { frameCount ->
-                if (!isLoading) return@repeat
-                val array = GlyphMatrixUtils.createLoadingArray(frameCount)
-                glyphMatrixManager?.setMatrixFrame(array)
-                delay(200)
-            }
+
+    private fun ensureServiceScope() {
+        if (!::serviceScope.isInitialized || serviceJob?.isActive != true) {
+            serviceJob = SupervisorJob()
+            serviceScope = CoroutineScope(Dispatchers.Main + serviceJob!!)
+        }
+    }
+
+    private fun formatDivisionName(divisionName: String): String {
+        val normalized = divisionName.lowercase()
+        return when {
+            normalized.contains("american") && normalized.contains("east") -> "AL E"
+            normalized.contains("american") && normalized.contains("central") -> "AL C"
+            normalized.contains("american") && normalized.contains("west") -> "AL W"
+            normalized.contains("national") && normalized.contains("east") -> "NL E"
+            normalized.contains("national") && normalized.contains("central") -> "NL C"
+            normalized.contains("national") && normalized.contains("west") -> "NL W"
+            else -> divisionName.split(" ")
+                .filter { it.isNotBlank() }
+                .joinToString(" ") { it.take(1).uppercase() }
+                .take(4)
         }
     }
     
     // Glyph Matrix Manager callback
     private val callback = object : GlyphMatrixManager.Callback {
         override fun onServiceConnected(name: android.content.ComponentName?) {
+            val targetDevice = resolveTargetDevice()
+            glyphMatrixManager?.register(targetDevice)
+            Log.d(TAG, "Glyph Matrix registered for target=$targetDevice matrix=${GlyphMatrixUtils.getMatrixSize()}")
+            displayCurrentMode()
             Log.d(TAG, "Glyph Matrix service connected: $name")
         }
         
@@ -319,5 +334,13 @@ class MLBStandingsGlyphToyService : Service() {
     
     companion object {
         private const val TAG = "MLBStandingsGlyphToy"
+    }
+
+    private fun resolveTargetDevice(): String {
+        return when {
+            Common.is25111p() -> Glyph.DEVICE_25111p
+            Common.is23112() -> Glyph.DEVICE_23112
+            else -> Glyph.DEVICE_23112
+        }
     }
 }
