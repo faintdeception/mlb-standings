@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.dreampipe.mlbstandings.data.api.MLBApiService
@@ -32,10 +33,45 @@ class MLBStandingsRepository(private val context: Context) {
     
     companion object {
         private val CACHED_STANDINGS_KEY = stringPreferencesKey("cached_standings")
+        private val CACHED_SEASON_KEY = stringPreferencesKey("cached_season")
         private val LAST_UPDATE_KEY = longPreferencesKey("last_update")
         private val FAVORITE_TEAM_KEY = stringPreferencesKey("favorite_team")
+        private val FAVORITE_TEAM_ID_KEY = intPreferencesKey("favorite_team_id")
         private const val MAX_RETRY_ATTEMPTS = 3
         private const val RETRY_DELAY_MS = 2000L
+
+        private val TEAM_IDS = mapOf(
+            "Arizona Diamondbacks" to 109,
+            "Atlanta Braves" to 144,
+            "Baltimore Orioles" to 110,
+            "Boston Red Sox" to 111,
+            "Chicago Cubs" to 112,
+            "Chicago White Sox" to 145,
+            "Cincinnati Reds" to 113,
+            "Cleveland Guardians" to 114,
+            "Colorado Rockies" to 115,
+            "Detroit Tigers" to 116,
+            "Houston Astros" to 117,
+            "Kansas City Royals" to 118,
+            "Los Angeles Angels" to 108,
+            "Los Angeles Dodgers" to 119,
+            "Miami Marlins" to 146,
+            "Milwaukee Brewers" to 158,
+            "Minnesota Twins" to 142,
+            "New York Mets" to 121,
+            "New York Yankees" to 147,
+            "Athletics" to 133,
+            "Philadelphia Phillies" to 143,
+            "Pittsburgh Pirates" to 134,
+            "San Diego Padres" to 135,
+            "San Francisco Giants" to 137,
+            "Seattle Mariners" to 136,
+            "St. Louis Cardinals" to 138,
+            "Tampa Bay Rays" to 139,
+            "Texas Rangers" to 140,
+            "Toronto Blue Jays" to 141,
+            "Washington Nationals" to 120
+        )
     }
     
     private suspend fun <T> retryNetworkCall(
@@ -68,12 +104,21 @@ class MLBStandingsRepository(private val context: Context) {
         throw lastException ?: Exception("Unknown network error")
     }
     
-    suspend fun getStandings(): Result<MLBStandingsResponse> {
+    suspend fun getStandings(forceRefresh: Boolean = false): Result<MLBStandingsResponse> {
         return try {
+            val currentSeason = getCurrentSeason()
+
             // Check if we have cached data from today
-            val lastUpdate = context.dataStore.data.map { preferences ->
-                preferences[LAST_UPDATE_KEY] ?: 0L
+            val cachedState = context.dataStore.data.map { preferences ->
+                Triple(
+                    preferences[LAST_UPDATE_KEY] ?: 0L,
+                    preferences[CACHED_SEASON_KEY],
+                    preferences[CACHED_STANDINGS_KEY]
+                )
             }.first()
+            val lastUpdate = cachedState.first
+            val cachedSeason = cachedState.second
+            val cachedJson = cachedState.third
             
             val today = Calendar.getInstance().apply {
                 set(Calendar.HOUR_OF_DAY, 0)
@@ -82,12 +127,8 @@ class MLBStandingsRepository(private val context: Context) {
                 set(Calendar.MILLISECOND, 0)
             }.timeInMillis
             
-            if (lastUpdate >= today) {
+            if (!forceRefresh && lastUpdate >= today && cachedSeason == currentSeason) {
                 // Return cached data
-                val cachedJson = context.dataStore.data.map { preferences ->
-                    preferences[CACHED_STANDINGS_KEY]
-                }.first()
-                
                 cachedJson?.let {
                     val cachedData = gson.fromJson(it, MLBStandingsResponse::class.java)
                     return Result.success(cachedData)
@@ -97,7 +138,7 @@ class MLBStandingsRepository(private val context: Context) {
             // Try to fetch fresh data with retry logic
             try {
                 val response = retryNetworkCall {
-                    mlbApiService.getStandings()
+                    mlbApiService.getStandings(season = currentSeason)
                 }
                 
                 if (response.isSuccessful) {
@@ -106,6 +147,7 @@ class MLBStandingsRepository(private val context: Context) {
                     // Cache the data
                     context.dataStore.edit { preferences ->
                         preferences[CACHED_STANDINGS_KEY] = gson.toJson(standings)
+                        preferences[CACHED_SEASON_KEY] = currentSeason
                         preferences[LAST_UPDATE_KEY] = System.currentTimeMillis()
                     }
                     
@@ -153,14 +195,27 @@ class MLBStandingsRepository(private val context: Context) {
     suspend fun setFavoriteTeam(teamName: String) {
         context.dataStore.edit { preferences ->
             preferences[FAVORITE_TEAM_KEY] = teamName
+            TEAM_IDS[teamName]?.let { teamId ->
+                preferences[FAVORITE_TEAM_ID_KEY] = teamId
+            }
         }
+    }
+
+    suspend fun getFavoriteTeamId(): Int? {
+        val preferences = context.dataStore.data.first()
+        return preferences[FAVORITE_TEAM_ID_KEY] ?: TEAM_IDS[preferences[FAVORITE_TEAM_KEY]]
     }
     
     suspend fun getFavoriteTeamRecord(): Result<TeamRecord?> {
         val favoriteTeam = getFavoriteTeam()
+        val favoriteTeamId = getFavoriteTeamId()
         return getStandings().map { standings ->
             standings.records.flatMap { it.teamRecords }
-                .find { it.team.name == favoriteTeam }
+                .find { teamRecord ->
+                    favoriteTeamId != null && teamRecord.team.id == favoriteTeamId
+                }
+                ?: standings.records.flatMap { it.teamRecords }
+                    .find { teamRecord -> teamNamesMatch(teamRecord.team.name, favoriteTeam) }
         }
     }
     
@@ -173,11 +228,36 @@ class MLBStandingsRepository(private val context: Context) {
     }
     
     suspend fun getDivisionStandings(teamName: String): Result<List<TeamRecord>> {
+        val favoriteTeamId = getFavoriteTeamId() ?: TEAM_IDS[teamName]
         return getStandings().map { standings ->
             val teamDivision = standings.records.find { division ->
-                division.teamRecords.any { it.team.name == teamName }
+                division.teamRecords.any { teamRecord ->
+                    (favoriteTeamId != null && teamRecord.team.id == favoriteTeamId) ||
+                        teamNamesMatch(teamRecord.team.name, teamName)
+                }
             }
             teamDivision?.teamRecords?.sortedBy { it.divisionRank.toIntOrNull() ?: Int.MAX_VALUE } ?: emptyList()
         }
+    }
+
+    private fun getCurrentSeason(): String {
+        return Calendar.getInstance().get(Calendar.YEAR).toString()
+    }
+
+    private fun teamNamesMatch(apiTeamName: String, favoriteTeamName: String): Boolean {
+        val normalizedApiName = normalizeTeamName(apiTeamName)
+        val normalizedFavoriteName = normalizeTeamName(favoriteTeamName)
+
+        return normalizedApiName == normalizedFavoriteName ||
+            normalizedFavoriteName.endsWith(normalizedApiName) ||
+            normalizedApiName.endsWith(normalizedFavoriteName)
+    }
+
+    private fun normalizeTeamName(teamName: String): String {
+        return teamName
+            .lowercase()
+            .replace("[^a-z0-9]".toRegex(), " ")
+            .replace("\\s+".toRegex(), " ")
+            .trim()
     }
 }

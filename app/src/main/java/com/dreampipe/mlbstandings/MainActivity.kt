@@ -130,9 +130,9 @@ class MainActivity : AppCompatActivity() {
                 refreshButton.isEnabled = false
                 refreshButton.text = "Refreshing..."
                 
-                val result = repository.getStandings()
+                val result = repository.getStandings(forceRefresh = true)
                 result.fold(
-                    onSuccess = { standings ->
+                    onSuccess = {
                         Log.d(TAG, "Successfully refreshed standings data")
                         updateLastUpdateText()
                         showToast("Data refreshed successfully!")

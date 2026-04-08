@@ -9,6 +9,6 @@ interface MLBApiService {
     @GET("api/v1/standings")
     suspend fun getStandings(
         @Query("leagueId") leagueId: String = "103,104", // AL and NL
-        @Query("season") season: String = "2025"
+        @Query("season") season: String
     ): Response<MLBStandingsResponse>
 }

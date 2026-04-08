@@ -1,6 +1,5 @@
 package com.dreampipe.mlbstandings.debug
 
-import android.app.Activity
 import android.graphics.Color
 import android.os.Bundle
 import android.widget.GridLayout
@@ -16,7 +15,7 @@ import com.dreampipe.mlbstandings.glyph.GlyphMatrixUtils
 class GlyphSimulatorActivity : AppCompatActivity() {
     
     private lateinit var gridLayout: GridLayout
-    private val pixelViews = Array(25) { Array(25) { ImageView(this) } }
+    private lateinit var pixelViews: Array<Array<ImageView>>
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -47,20 +46,18 @@ class GlyphSimulatorActivity : AppCompatActivity() {
         gridLayout = findViewById(R.id.glyph_grid)
         gridLayout.rowCount = 25
         gridLayout.columnCount = 25
-        
-        // Create 25x25 grid of ImageViews
-        for (row in 0 until 25) {
-            for (col in 0 until 25) {
-                val imageView = ImageView(this).apply {
+        pixelViews = Array(25) {
+            Array(25) {
+                ImageView(this).apply {
                     layoutParams = GridLayout.LayoutParams().apply {
                         width = 8
                         height = 8
                         setMargins(1, 1, 1, 1)
                     }
                     setBackgroundColor(Color.BLACK)
+                }.also { imageView ->
+                    gridLayout.addView(imageView)
                 }
-                pixelViews[row][col] = imageView
-                gridLayout.addView(imageView)
             }
         }
     }
@@ -86,6 +83,6 @@ class GlyphSimulatorActivity : AppCompatActivity() {
      * Call this method to test different displays
      */
     fun testWinLossDisplay(wins: Int, losses: Int) {
-        displayArray(GlyphMatrixUtils.createLoadingArray(wins % 10))
+        displayArray(GlyphMatrixUtils.createLoadingArray((wins + losses) % 10))
     }
 }
