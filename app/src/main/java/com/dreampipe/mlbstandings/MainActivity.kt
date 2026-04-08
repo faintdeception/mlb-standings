@@ -138,7 +138,7 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             try {
                 refreshButton.isEnabled = false
-                refreshButton.text = "Refreshing..."
+                refreshButton.text = getString(R.string.refreshing)
                 
                 val result = repository.getStandings(forceRefresh = true)
                 result.fold(
@@ -157,7 +157,7 @@ class MainActivity : AppCompatActivity() {
                 showToast("Error: ${e.message}")
             } finally {
                 refreshButton.isEnabled = true
-                refreshButton.text = "Refresh Data"
+                refreshButton.text = getString(R.string.refresh_data)
             }
         }
     }
@@ -166,7 +166,7 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             try {
                 testButton.isEnabled = false
-                testButton.text = "Testing..."
+                testButton.text = getString(R.string.testing)
                 
                 // Test favorite team display
                 val result = repository.getFavoriteTeamRecord()
@@ -189,7 +189,7 @@ class MainActivity : AppCompatActivity() {
                 showToast("Test error: ${e.message}")
             } finally {
                 testButton.isEnabled = true
-                testButton.text = "Test Glyph Display"
+                testButton.text = getString(R.string.test_glyph_display)
             }
         }
     }
