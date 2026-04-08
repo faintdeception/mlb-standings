@@ -5,11 +5,16 @@ import android.content.ComponentName
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
+import android.view.View
 import android.widget.ArrayAdapter
 import android.widget.Button
+import android.widget.LinearLayout
 import android.widget.Spinner
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
 import com.dreampipe.mlbstandings.data.repository.MLBStandingsRepository
 import kotlinx.coroutines.launch
@@ -25,6 +30,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var refreshButton: Button
     private lateinit var testButton: Button
     private lateinit var activateToyButton: Button
+    private lateinit var mainContent: LinearLayout
     
     private val mlbTeams = arrayOf(
         "Arizona Diamondbacks",
@@ -61,11 +67,13 @@ class MainActivity : AppCompatActivity() {
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         setContentView(R.layout.activity_main)
         
         repository = MLBStandingsRepository(this)
         
         initializeViews()
+        setupWindowInsets()
         setupTeamSpinner()
         setupClickListeners()
         
@@ -74,12 +82,40 @@ class MainActivity : AppCompatActivity() {
     }
     
     private fun initializeViews() {
+        mainContent = findViewById(R.id.mainContent)
         teamSpinner = findViewById(R.id.teamSpinner)
         lastUpdateText = findViewById(R.id.lastUpdateText)
         refreshButton = findViewById(R.id.refreshButton)
         testButton = findViewById(R.id.testButton)
         activateToyButton = findViewById(R.id.activateToyButton)
         activateToyButton.isEnabled = canOpenGlyphToysManager()
+    }
+
+    private fun setupWindowInsets() {
+        val baseHorizontalPadding = 24.dpToPx()
+        val baseTopPadding = 24.dpToPx()
+        val baseBottomPadding = 24.dpToPx()
+
+        ViewCompat.setOnApplyWindowInsetsListener(mainContent) { view, insets ->
+            val systemBarInsets = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            val displayCutoutInsets = insets.displayCutout
+
+            val leftInset = maxOf(systemBarInsets.left, displayCutoutInsets?.safeInsetLeft ?: 0)
+            val topInset = maxOf(systemBarInsets.top, displayCutoutInsets?.safeInsetTop ?: 0)
+            val rightInset = maxOf(systemBarInsets.right, displayCutoutInsets?.safeInsetRight ?: 0)
+            val bottomInset = maxOf(systemBarInsets.bottom, displayCutoutInsets?.safeInsetBottom ?: 0)
+
+            view.setPadding(
+                baseHorizontalPadding + leftInset,
+                baseTopPadding + topInset,
+                baseHorizontalPadding + rightInset,
+                baseBottomPadding + bottomInset
+            )
+
+            insets
+        }
+
+        ViewCompat.requestApplyInsets(mainContent)
     }
     
     private fun setupTeamSpinner() {
@@ -229,6 +265,10 @@ class MainActivity : AppCompatActivity() {
     
     private fun showToast(message: String) {
         android.widget.Toast.makeText(this, message, android.widget.Toast.LENGTH_SHORT).show()
+    }
+
+    private fun Int.dpToPx(): Int {
+        return (this * resources.displayMetrics.density).toInt()
     }
     
     companion object {
